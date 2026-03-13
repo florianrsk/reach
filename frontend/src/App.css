@@ -1,0 +1,169 @@
+/* App-specific styles */
+
+/* Landing page hero */
+.hero-gradient {
+  background: radial-gradient(ellipse at 50% 0%, hsl(35 90% 50% / 0.1) 0%, transparent 50%);
+}
+
+/* Bento grid */
+.bento-grid {
+  display: grid;
+  gap: 1px;
+  background: hsl(var(--border));
+}
+
+.bento-grid > * {
+  background: hsl(var(--background));
+}
+
+/* Status indicators */
+.status-delivered {
+  color: hsl(142 76% 36%);
+}
+
+.status-rejected {
+  color: hsl(0 84% 60%);
+}
+
+.status-pending {
+  color: hsl(35 90% 50%);
+}
+
+.status-queued {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Policy rule card */
+.rule-card {
+  border-left: 2px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.rule-card:hover {
+  border-left-color: hsl(var(--primary));
+}
+
+/* Dashboard stat card */
+.stat-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, hsl(var(--card) / 0.5));
+  pointer-events: none;
+}
+
+/* Public reach page */
+.reach-surface {
+  border: 1px solid hsl(var(--border));
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.reach-surface:hover {
+  border-color: hsl(var(--primary) / 0.5);
+  background: hsl(var(--card) / 0.5);
+}
+
+/* Form styles */
+.form-section {
+  border-bottom: 1px solid hsl(var(--border));
+  padding-bottom: 2rem;
+  margin-bottom: 2rem;
+}
+
+.form-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+/* Navigation */
+.nav-link {
+  position: relative;
+  color: hsl(var(--muted-foreground));
+  transition: color 0.15s ease;
+}
+
+.nav-link:hover {
+  color: hsl(var(--foreground));
+}
+
+.nav-link.active {
+  color: hsl(var(--foreground));
+}
+
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: hsl(var(--primary));
+}
+
+/* Intent badges */
+.intent-business {
+  background: hsl(210 100% 50% / 0.1);
+  color: hsl(210 100% 60%);
+  border: 1px solid hsl(210 100% 50% / 0.2);
+}
+
+.intent-personal {
+  background: hsl(280 100% 50% / 0.1);
+  color: hsl(280 100% 70%);
+  border: 1px solid hsl(280 100% 50% / 0.2);
+}
+
+.intent-spam {
+  background: hsl(0 100% 50% / 0.1);
+  color: hsl(0 100% 70%);
+  border: 1px solid hsl(0 100% 50% / 0.2);
+}
+
+.intent-urgent {
+  background: hsl(35 100% 50% / 0.1);
+  color: hsl(35 100% 60%);
+  border: 1px solid hsl(35 100% 50% / 0.2);
+}
+
+.intent-unknown {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  border: 1px solid hsl(var(--border));
+}
+
+/* Decision badges */
+.decision-deliver_to_human {
+  background: hsl(142 76% 36% / 0.1);
+  color: hsl(142 76% 50%);
+}
+
+.decision-reject {
+  background: hsl(0 84% 60% / 0.1);
+  color: hsl(0 84% 70%);
+}
+
+.decision-queue {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+
+.decision-request_payment {
+  background: hsl(35 90% 50% / 0.1);
+  color: hsl(35 90% 60%);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .bento-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

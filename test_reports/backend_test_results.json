@@ -1,0 +1,150 @@
+{
+  "summary": {
+    "total_tests": 12,
+    "passed_tests": 1,
+    "failed_tests": 11,
+    "success_rate": 8.333333333333332
+  },
+  "failed_tests": [
+    {
+      "test": "API Root",
+      "success": false,
+      "details": "Status: 404 (expected 200) - 404 page not found\n",
+      "timestamp": "2026-03-12T17:06:59.134153"
+    },
+    {
+      "test": "Health Check",
+      "success": false,
+      "details": "Status: 404 (expected 200) - 404 page not found\n",
+      "timestamp": "2026-03-12T17:07:00.007901"
+    },
+    {
+      "test": "User Registration",
+      "success": false,
+      "details": "Status: 404 (expected 200) - 404 page not found\n",
+      "timestamp": "2026-03-12T17:07:00.441786"
+    },
+    {
+      "test": "User Login",
+      "success": false,
+      "details": "Status: 404 (expected 200) - 404 page not found\n",
+      "timestamp": "2026-03-12T17:07:00.865796"
+    },
+    {
+      "test": "Get Current User",
+      "success": false,
+      "details": "Status: 404 (expected 200) - 404 page not found\n",
+      "timestamp": "2026-03-12T17:07:01.304706"
+    },
+    {
+      "test": "Invalid Login",
+      "success": false,
+      "details": "Status: 404 (expected 401) - 404 page not found\n",
+      "timestamp": "2026-03-12T17:07:01.724168"
+    },
+    {
+      "test": "Identity Tests",
+      "success": false,
+      "details": "No auth token available",
+      "timestamp": "2026-03-12T17:07:01.724168"
+    },
+    {
+      "test": "Slot Tests",
+      "success": false,
+      "details": "No auth token or identity available",
+      "timestamp": "2026-03-12T17:07:01.724168"
+    },
+    {
+      "test": "Public Reach Tests",
+      "success": false,
+      "details": "No identity available",
+      "timestamp": "2026-03-12T17:07:01.724168"
+    },
+    {
+      "test": "Reach Attempts Tests",
+      "success": false,
+      "details": "No auth token available",
+      "timestamp": "2026-03-12T17:07:01.724168"
+    },
+    {
+      "test": "Stats Test",
+      "success": false,
+      "details": "No auth token available",
+      "timestamp": "2026-03-12T17:07:01.724168"
+    }
+  ],
+  "all_results": [
+    {
+      "test": "API Root",
+      "success": false,
+      "details": "Status: 404 (expected 200) - 404 page not found\n",
+      "timestamp": "2026-03-12T17:06:59.134153"
+    },
+    {
+      "test": "Health Check",
+      "success": false,
+      "details": "Status: 404 (expected 200) - 404 page not found\n",
+      "timestamp": "2026-03-12T17:07:00.007901"
+    },
+    {
+      "test": "User Registration",
+      "success": false,
+      "details": "Status: 404 (expected 200) - 404 page not found\n",
+      "timestamp": "2026-03-12T17:07:00.441786"
+    },
+    {
+      "test": "User Login",
+      "success": false,
+      "details": "Status: 404 (expected 200) - 404 page not found\n",
+      "timestamp": "2026-03-12T17:07:00.865796"
+    },
+    {
+      "test": "Get Current User",
+      "success": false,
+      "details": "Status: 404 (expected 200) - 404 page not found\n",
+      "timestamp": "2026-03-12T17:07:01.304706"
+    },
+    {
+      "test": "Invalid Login",
+      "success": false,
+      "details": "Status: 404 (expected 401) - 404 page not found\n",
+      "timestamp": "2026-03-12T17:07:01.724168"
+    },
+    {
+      "test": "Identity Tests",
+      "success": false,
+      "details": "No auth token available",
+      "timestamp": "2026-03-12T17:07:01.724168"
+    },
+    {
+      "test": "Slot Tests",
+      "success": false,
+      "details": "No auth token or identity available",
+      "timestamp": "2026-03-12T17:07:01.724168"
+    },
+    {
+      "test": "Public Reach Tests",
+      "success": false,
+      "details": "No identity available",
+      "timestamp": "2026-03-12T17:07:01.724168"
+    },
+    {
+      "test": "Reach Attempts Tests",
+      "success": false,
+      "details": "No auth token available",
+      "timestamp": "2026-03-12T17:07:01.724168"
+    },
+    {
+      "test": "Stats Test",
+      "success": false,
+      "details": "No auth token available",
+      "timestamp": "2026-03-12T17:07:01.724168"
+    },
+    {
+      "test": "Payment Status (Invalid)",
+      "success": true,
+      "details": "Status: 404",
+      "timestamp": "2026-03-12T17:07:02.183529"
+    }
+  ]
+}
