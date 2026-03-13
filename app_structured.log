@@ -1,8 +1,0 @@
-{"timestamp": "2026-03-13T00:44:41.409162+00:00", "name": "server", "level": "INFO", "message": "Structured logging initialized"}
-{"timestamp": "2026-03-13T11:21:48.382414+00:00", "name": "server", "level": "INFO", "message": "Structured logging initialized"}
-{"timestamp": "2026-03-13T11:22:30.379915+00:00", "name": "server", "level": "INFO", "message": "Structured logging initialized"}
-{"timestamp": "2026-03-13T11:23:09.508931+00:00", "name": "server", "level": "INFO", "message": "Structured logging initialized"}
-{"timestamp": "2026-03-13T11:53:16.609096+00:00", "name": "server", "level": "INFO", "message": "Structured logging initialized"}
-{"timestamp": "2026-03-13T11:53:34.416223+00:00", "name": "server", "level": "INFO", "message": "Structured logging initialized"}
-{"timestamp": "2026-03-13T11:53:58.641265+00:00", "name": "server", "level": "INFO", "message": "Structured logging initialized"}
-{"timestamp": "2026-03-13T20:45:05.493628+00:00", "name": "server", "level": "INFO", "message": "Structured logging initialized"}
