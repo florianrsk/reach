@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from './ui/button';
-import { LayoutDashboard, Layers, Inbox, Settings, LogOut, ExternalLink, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Inbox, Settings, LogOut, ExternalLink, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
 export const Layout = ({ children }) => {
@@ -11,7 +11,6 @@ export const Layout = ({ children }) => {
 
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/slots', label: 'Slots', icon: Layers },
     { path: '/attempts', label: 'Attempts', icon: Inbox },
     { path: '/settings', label: 'Settings', icon: Settings },
   ];

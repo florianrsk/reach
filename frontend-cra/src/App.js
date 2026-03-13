@@ -7,13 +7,10 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import FaceSetup from "./pages/FaceSetup";
-import Slots from "./pages/Slots";
-import SlotEdit from "./pages/SlotEdit";
 import Attempts from "./pages/Attempts";
 import DecisionSurface from "./pages/DecisionSurface";
 import Settings from "./pages/Settings";
 import PublicReach from "./pages/PublicReach";
-import PublicSlot from "./pages/PublicSlot";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
 import Why from "./pages/Why";
@@ -86,15 +83,12 @@ function App() {
             {/* Protected Routes */}
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/face-setup" element={<ProtectedRoute><FaceSetup /></ProtectedRoute>} />
-            <Route path="/slots" element={<ProtectedRoute><Slots /></ProtectedRoute>} />
-            <Route path="/slots/:slotId" element={<ProtectedRoute><SlotEdit /></ProtectedRoute>} />
             <Route path="/attempts" element={<ProtectedRoute><DecisionSurface /></ProtectedRoute>} />
             <Route path="/attempts-old" element={<ProtectedRoute><Attempts /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             
             {/* Public Reach Pages */}
             <Route path="/r/:handle" element={<PublicReach />} />
-            <Route path="/r/:handle/:slot" element={<PublicSlot />} />
             
             {/* Payment Pages */}
             <Route path="/payment/success" element={<PaymentSuccess />} />

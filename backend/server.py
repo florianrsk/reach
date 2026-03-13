@@ -14,8 +14,9 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import secrets
+import asyncio
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict, EmailStr, validator
+from pydantic import BaseModel, Field, ConfigDict, EmailStr, field_validator
 from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone, timedelta
@@ -66,6 +67,9 @@ load_dotenv(ROOT_DIR / ".env")
 mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ["DB_NAME"]]
+
+# Redis Cache
+from redis_cache import get_redis_cache, cache_public_reach_page, get_cached_public_reach_page, invalidate_cached_public_reach_page, cache_health_check
 
 # JWT Configuration
 JWT_SECRET = os.environ.get("JWT_SECRET", "reach_jwt_secret_key")
@@ -271,7 +275,7 @@ class UserCreate(BaseModel):
     password: str
     name: str
 
-    @validator("password")
+    @field_validator("password")
     def validate_password(cls, v):
         if len(v) < 12:
             raise ValueError("Password must be at least 12 characters long")
@@ -313,7 +317,7 @@ class IdentityCreate(BaseModel):
     type: str = "person"  # person or org
     bio: Optional[str] = None
 
-    @validator("handle")
+    @field_validator("handle")
     def validate_handle(cls, v):
         if len(v) < 3:
             raise ValueError("Handle must be at least 3 characters long")
@@ -327,13 +331,13 @@ class IdentityCreate(BaseModel):
             raise ValueError("Handle is reserved")
         return v.lower()
 
-    @validator("type")
+    @field_validator("type")
     def validate_type(cls, v):
         if v not in ["person", "org"]:
             raise ValueError("Type must be either 'person' or 'org'")
         return v
 
-    @validator("bio")
+    @field_validator("bio")
     def validate_bio(cls, v):
         if v and len(v) > 500:
             raise ValueError("Bio must be at most 500 characters long")
@@ -353,7 +357,7 @@ class FaceCreate(BaseModel):
     photo_url: Optional[str] = None
     links: Optional[List[Dict[str, str]]] = None
 
-    @validator("handle")
+    @field_validator("handle")
     def validate_handle(cls, v):
         if len(v) < 3:
             raise ValueError("Handle must be at least 3 characters long")
@@ -367,7 +371,7 @@ class FaceCreate(BaseModel):
             raise ValueError("Handle is reserved")
         return v.lower()
 
-    @validator("display_name")
+    @field_validator("display_name")
     def validate_display_name(cls, v):
         if len(v) < 2:
             raise ValueError("Display name must be at least 2 characters long")
@@ -377,7 +381,7 @@ class FaceCreate(BaseModel):
             raise ValueError("Display name contains invalid content")
         return v.strip()
 
-    @validator("headline")
+    @field_validator("headline")
     def validate_headline(cls, v):
         if len(v) < 10:
             raise ValueError("Headline must be at least 10 characters long")
@@ -387,7 +391,7 @@ class FaceCreate(BaseModel):
             raise ValueError("Headline contains invalid content")
         return v.strip()
 
-    @validator("current_focus")
+    @field_validator("current_focus")
     def validate_current_focus(cls, v):
         if len(v) < 20:
             raise ValueError("Current focus must be at least 20 characters long")
@@ -397,7 +401,7 @@ class FaceCreate(BaseModel):
             raise ValueError("Current focus contains invalid content")
         return v.strip()
 
-    @validator("availability_signal")
+    @field_validator("availability_signal")
     def validate_availability_signal(cls, v):
         if len(v) < 10:
             raise ValueError("Availability signal must be at least 10 characters long")
@@ -407,7 +411,7 @@ class FaceCreate(BaseModel):
             raise ValueError("Availability signal contains invalid content")
         return v.strip()
 
-    @validator("prompt")
+    @field_validator("prompt")
     def validate_prompt(cls, v):
         if len(v) < 10:
             raise ValueError("Prompt must be at least 10 characters long")
@@ -417,7 +421,7 @@ class FaceCreate(BaseModel):
             raise ValueError("Prompt contains invalid content")
         return v.strip()
 
-    @validator("photo_url")
+    @field_validator("photo_url")
     def validate_photo_url(cls, v):
         if v:
             if len(v) > 500:
@@ -428,7 +432,7 @@ class FaceCreate(BaseModel):
                 raise ValueError("Photo URL contains invalid content")
         return v
 
-    @validator("links")
+    @field_validator("links")
     def validate_links(cls, v):
         if v:
             if len(v) > 2:
@@ -470,34 +474,7 @@ class IdentityResponse(BaseModel):
     modules_config: Optional[Dict[str, Any]] = None
 
 
-class SlotCreate(BaseModel):
-    name: str
-    description: str
-    visibility: str = "public"  # public, private, link-only
 
-
-class SlotUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    visibility: Optional[str] = None
-
-
-class SlotResponse(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str
-    identity_id: str
-    name: str
-    description: str
-    visibility: str
-    reach_policy: Optional[Dict[str, Any]] = None
-    created_at: str
-
-
-class PolicyUpdate(BaseModel):
-    conditions: List[Dict[str, Any]]
-    actions: Dict[str, Any]
-    fallback: str = "reject"
-    payment_amount: Optional[float] = None
 
 
 class FaceReachAttemptCreate(BaseModel):
@@ -508,7 +485,7 @@ class FaceReachAttemptCreate(BaseModel):
     time_requirement: Optional[str] = None
     intent_category: Optional[str] = None
 
-    @validator("message")
+    @field_validator("message")
     def validate_message(cls, v):
         if len(v) < 10:
             raise ValueError("Message must be at least 10 characters long")
@@ -528,7 +505,7 @@ class ReachAttemptCreate(BaseModel):
     sender_email: Optional[str] = None
     sender_name: Optional[str] = None
 
-    @validator("intent")
+    @field_validator("intent")
     def validate_intent(cls, v):
         valid_intents = [
             "business",
@@ -542,7 +519,7 @@ class ReachAttemptCreate(BaseModel):
             raise ValueError(f"Intent must be one of: {', '.join(valid_intents)}")
         return v
 
-    @validator("reason")
+    @field_validator("reason")
     def validate_reason(cls, v):
         if len(v) < 5:
             raise ValueError("Reason must be at least 5 characters long")
@@ -554,7 +531,7 @@ class ReachAttemptCreate(BaseModel):
             raise ValueError("Reason contains invalid content")
         return v
 
-    @validator("message")
+    @field_validator("message")
     def validate_message(cls, v):
         if v and len(v) > 5000:
             raise ValueError("Message must be at most 5000 characters long")
@@ -562,7 +539,7 @@ class ReachAttemptCreate(BaseModel):
             raise ValueError("Message contains invalid content")
         return v
 
-    @validator("sender_email")
+    @field_validator("sender_email")
     def validate_sender_email(cls, v):
         if v:
             # Basic email validation
@@ -572,7 +549,7 @@ class ReachAttemptCreate(BaseModel):
                 raise ValueError("Email is too long")
         return v
 
-    @validator("sender_name")
+    @field_validator("sender_name")
     def validate_sender_name(cls, v):
         if v and len(v) > 100:
             raise ValueError("Sender name must be at most 100 characters long")
@@ -817,81 +794,7 @@ def get_user_rate_limit_key(request: Request):
 # ==================== AI SERVICE ====================
 
 
-async def classify_reach_attempt(slot: dict, attempt: ReachAttemptCreate) -> dict:
-    """Use AI to classify the reach attempt and determine outcome"""
-    if not EMERGENT_LLM_AVAILABLE:
-        # Fallback classification if LLM not available
-        return {
-            "classification": {"intent_type": "unknown", "confidence": 0.5},
-            "decision": "queue",
-            "reason": "LLM service not available, queued for manual review",
-        }
 
-    try:
-        chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=f"reach-{uuid.uuid4()}",
-            system_message="""You are the Reach AI Operator. Your job is to classify incoming reach attempts and determine the appropriate outcome based on the slot's policy.
-
-You must analyze the sender's intent, reason, and message, then return a JSON response with:
-- classification: object with "intent_type" (business, personal, spam, urgent, unknown) and "confidence" (0-1)
-- decision: one of "deliver_to_human", "deliver_to_ai", "queue", "reject", "request_payment", "request_more_info", "auto_respond"
-- rationale: brief explanation of your decision (1-2 sentences)
-- auto_response: if decision is auto_respond, include the response text
-
-IMPORTANT: Return ONLY valid JSON, no markdown or extra text.""",
-        ).with_model("openai", "gpt-5.2")
-
-        policy = slot.get("reach_policy", {})
-        policy_text = (
-            json.dumps(policy)
-            if policy
-            else "No specific policy set. Default: accept business inquiries, reject spam, queue personal."
-        )
-
-        user_message = UserMessage(
-            text=f"""Evaluate this reach attempt for slot "{slot.get("name", "unknown")}":
-
-Slot Description: {slot.get("description", "No description")}
-Slot Policy: {policy_text}
-
-Sender Intent: {attempt.intent}
-Sender Reason: {attempt.reason}
-Message: {attempt.message or "No message provided"}
-Sender Email: {attempt.sender_email or "Anonymous"}
-Sender Name: {attempt.sender_name or "Unknown"}
-
-Return your classification as JSON."""
-        )
-
-        response = await chat.send_message(user_message)
-
-        # Parse AI response
-        try:
-            # Clean response if needed
-            cleaned = response.strip()
-            if cleaned.startswith("```"):
-                cleaned = cleaned.split("```")[1]
-                if cleaned.startswith("json"):
-                    cleaned = cleaned[4:]
-            result = json.loads(cleaned)
-        except json.JSONDecodeError:
-            # Fallback response
-            result = {
-                "classification": {"intent_type": "unknown", "confidence": 0.5},
-                "decision": "queue",
-                "rationale": "Unable to parse AI response, queuing for human review.",
-            }
-
-        return result
-
-    except Exception as e:
-        logger.error(f"AI classification error: {e}")
-        return {
-            "classification": {"intent_type": "unknown", "confidence": 0},
-            "decision": "queue",
-            "rationale": f"AI service unavailable, queuing for human review.",
-        }
 
 
 async def evaluate_rules_simple_keyword_matching(
@@ -926,30 +829,6 @@ async def evaluate_rules_simple_keyword_matching(
             # Simple keyword matching for "message contains 'keyword'"
             if "message contains" in rule_text:
                 # Extract keyword between quotes
-                matches = re.findall(r"message contains ['\"]([^'\"]+)['\"]", rule_text)
-                for keyword in matches:
-                    if keyword.lower() in message:
-                        triggered_rules.append(
-                            {
-                                "rule": rule_str,
-                                "applies": True,
-                                "action": rule_action,
-                                "confidence": 0.9,
-                                "reasoning": f"Message contains keyword '{keyword}'",
-                                "suggested_response": rule_reason,
-                            }
-                        )
-                        break
-
-        except (json.JSONDecodeError, KeyError):
-            # Skip malformed rules
-            continue
-
-            # Simple keyword matching for "message contains 'keyword'"
-            if "message contains" in rule_text:
-                # Extract keyword between quotes
-                import re
-
                 matches = re.findall(r"message contains ['\"]([^'\"]+)['\"]", rule_text)
                 for keyword in matches:
                     if keyword.lower() in message:
@@ -1371,6 +1250,18 @@ async def readiness_probe():
         raise HTTPException(status_code=503, detail=f"Service not ready: {e}")
 
 
+@api_router.get("/cache/health")
+async def cache_health_check_endpoint():
+    """Check Redis cache health status"""
+    cache_status = await cache_health_check()
+    return {
+        "status": "healthy" if cache_status.get("connected") else "degraded",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "cache": cache_status,
+        "note": "Cache degradation does not break functionality - system falls back to MongoDB"
+    }
+
+
 # ==================== IDENTITY ROUTES ====================
 
 
@@ -1503,140 +1394,16 @@ async def update_modules_config(
     await db.identities.update_one(
         {"user_id": user["id"]}, {"$set": {"modules_config": current_modules}}
     )
+    
+    # Invalidate cache for this identity's public page
+    if identity and identity.get("handle"):
+        asyncio.create_task(invalidate_cached_public_reach_page(identity["handle"]))
 
     # Return updated config
     return await get_modules_config(user)
 
 
-# ==================== SLOT ROUTES ====================
 
-
-@api_router.post("/slots", response_model=SlotResponse)
-async def create_slot(data: SlotCreate, user: dict = Depends(get_current_user)):
-    identity = await db.identities.find_one({"user_id": user["id"]}, {"_id": 0})
-    if not identity:
-        raise HTTPException(status_code=400, detail="Create an identity first")
-
-    # Check if slot name exists for this identity
-    existing = await db.slots.find_one(
-        {"identity_id": identity["id"], "name": data.name.lower()}
-    )
-    if existing:
-        raise HTTPException(status_code=400, detail="Slot name already exists")
-
-    slot_id = str(uuid.uuid4())
-    slot = {
-        "id": slot_id,
-        "identity_id": identity["id"],
-        "name": data.name.lower(),
-        "description": data.description,
-        "visibility": data.visibility,
-        "reach_policy": {
-            "conditions": [],
-            "actions": {"default": "queue"},
-            "fallback": "queue",
-        },
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-
-    await db.slots.insert_one(slot)
-    return SlotResponse(**{k: v for k, v in slot.items() if k != "_id"})
-
-
-@api_router.get("/slots", response_model=List[SlotResponse])
-async def get_my_slots(user: dict = Depends(get_current_user)):
-    identity = await db.identities.find_one({"user_id": user["id"]}, {"_id": 0})
-    if not identity:
-        return []
-
-    slots = await db.slots.find({"identity_id": identity["id"]}, {"_id": 0}).to_list(
-        100
-    )
-    return [SlotResponse(**slot) for slot in slots]
-
-
-@api_router.get("/slots/{slot_id}", response_model=SlotResponse)
-async def get_slot(slot_id: str, user: dict = Depends(get_current_user)):
-    identity = await db.identities.find_one({"user_id": user["id"]}, {"_id": 0})
-    if not identity:
-        raise HTTPException(status_code=404, detail="Identity not found")
-
-    slot = await db.slots.find_one(
-        {"id": slot_id, "identity_id": identity["id"]}, {"_id": 0}
-    )
-    if not slot:
-        raise HTTPException(status_code=404, detail="Slot not found")
-    return SlotResponse(**slot)
-
-
-@api_router.put("/slots/{slot_id}", response_model=SlotResponse)
-async def update_slot(
-    slot_id: str, data: SlotUpdate, user: dict = Depends(get_current_user)
-):
-    identity = await db.identities.find_one({"user_id": user["id"]}, {"_id": 0})
-    if not identity:
-        raise HTTPException(status_code=404, detail="Identity not found")
-
-    slot = await db.slots.find_one(
-        {"id": slot_id, "identity_id": identity["id"]}, {"_id": 0}
-    )
-    if not slot:
-        raise HTTPException(status_code=404, detail="Slot not found")
-
-    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
-    if update_data:
-        await db.slots.update_one({"id": slot_id}, {"$set": update_data})
-
-    slot = await db.slots.find_one({"id": slot_id}, {"_id": 0})
-    return SlotResponse(**slot)
-
-
-@api_router.put("/slots/{slot_id}/policy", response_model=SlotResponse)
-async def update_slot_policy(
-    slot_id: str, data: PolicyUpdate, user: dict = Depends(get_current_user)
-):
-    identity = await db.identities.find_one({"user_id": user["id"]}, {"_id": 0})
-    if not identity:
-        raise HTTPException(status_code=404, detail="Identity not found")
-
-    slot = await db.slots.find_one(
-        {"id": slot_id, "identity_id": identity["id"]}, {"_id": 0}
-    )
-    if not slot:
-        raise HTTPException(status_code=404, detail="Slot not found")
-
-    policy = {
-        "conditions": data.conditions,
-        "actions": data.actions,
-        "fallback": data.fallback,
-        "payment_amount": data.payment_amount,
-    }
-
-    await db.slots.update_one({"id": slot_id}, {"$set": {"reach_policy": policy}})
-
-    slot = await db.slots.find_one({"id": slot_id}, {"_id": 0})
-    return SlotResponse(**slot)
-
-
-@api_router.delete("/slots/{slot_id}")
-async def delete_slot(slot_id: str, user: dict = Depends(get_current_user)):
-    identity = await db.identities.find_one({"user_id": user["id"]}, {"_id": 0})
-    if not identity:
-        raise HTTPException(status_code=404, detail="Identity not found")
-
-    slot = await db.slots.find_one(
-        {"id": slot_id, "identity_id": identity["id"]}, {"_id": 0}
-    )
-    if not slot:
-        raise HTTPException(status_code=404, detail="Slot not found")
-
-    if slot["name"] == "open":
-        raise HTTPException(
-            status_code=400, detail="Cannot delete the default 'open' slot"
-        )
-
-    await db.slots.delete_one({"id": slot_id})
-    return {"message": "Slot deleted"}
 
 
 # ==================== PUBLIC REACH ROUTES ====================
@@ -1644,6 +1411,15 @@ async def delete_slot(slot_id: str, user: dict = Depends(get_current_user)):
 
 @api_router.get("/reach/{handle}", response_model=Dict[str, Any])
 async def get_public_reach_page(handle: str):
+    # Try to get from cache first
+    cached_data = await get_cached_public_reach_page(handle)
+    if cached_data:
+        logger.info(f"Cache hit for public reach page: {handle}")
+        return cached_data
+    
+    logger.info(f"Cache miss for public reach page: {handle}")
+    
+    # Cache miss, query MongoDB
     identity = await db.identities.find_one({"handle": handle.lower()}, {"_id": 0})
     if not identity:
         raise HTTPException(status_code=404, detail="Identity not found")
@@ -1683,7 +1459,10 @@ async def get_public_reach_page(handle: str):
 
         if enabled_modules:
             response_data["modules"] = enabled_modules
-
+    
+    # Cache the response (async, don't wait for it)
+    asyncio.create_task(cache_public_reach_page(handle, response_data))
+    
     return response_data
 
 
@@ -1861,65 +1640,43 @@ async def submit_face_reach_attempt(
 
     await db.reach_attempts.insert_one(attempt)
 
-    # Return success response
+    # Return response based on decision
     response_data = {
         "success": True,
         "attempt_id": attempt_id,
-        "message": "Message submitted successfully",
-        "confirmation": f"Your message reached {identity.get('display_name', identity['handle'])}.",
     }
+    
+    # Set appropriate message based on decision
+    if decision == "reject":
+        response_data["message"] = "Message was not accepted"
+        response_data["rejected"] = True
+    elif decision == "request_payment":
+        response_data["message"] = "Payment required to complete submission"
+        response_data["payment_required"] = True
+        response_data["payment_amount"] = modules_config.get("deposit", {}).get(
+            "amount_usd"
+        )
+    elif decision == "request_more_context":
+        response_data["message"] = "More information requested"
+        response_data["needs_more_context"] = True
+    elif decision == "deliver_to_human":
+        response_data["message"] = "Message accepted and delivered"
+        response_data["accepted"] = True
+    else:  # queued or any other
+        response_data["message"] = "Message submitted for review"
+        response_data["queued"] = True
+    
+    # Always include confirmation
+    response_data["confirmation"] = f"Your message reached {identity.get('display_name', identity['handle'])}."
 
     # Include auto-response if any
     if auto_response:
         response_data["auto_response"] = auto_response
 
-    # Include payment info if required
-    if decision == "request_payment":
-        response_data["payment_required"] = True
-        response_data["payment_amount"] = modules_config.get("deposit", {}).get(
-            "amount_usd"
-        )
-        response_data["message"] = "Payment required to complete submission"
-
     return response_data
 
 
-@api_router.get("/reach/{handle}/{slot_name}", response_model=Dict[str, Any])
-async def get_public_slot(handle: str, slot_name: str):
-    identity = await db.identities.find_one({"handle": handle.lower()}, {"_id": 0})
-    if not identity:
-        raise HTTPException(status_code=404, detail="Identity not found")
 
-    slot = await db.slots.find_one(
-        {"identity_id": identity["id"], "name": slot_name.lower()}, {"_id": 0}
-    )
-
-    if not slot:
-        raise HTTPException(status_code=404, detail="Slot not found")
-
-    if slot["visibility"] == "private":
-        raise HTTPException(status_code=403, detail="This slot is private")
-
-    # Get policy info for display (without sensitive data)
-    policy = slot.get("reach_policy", {})
-    policy_display = {
-        "requires_payment": policy.get("payment_amount") is not None,
-        "payment_amount": policy.get("payment_amount"),
-    }
-
-    return {
-        "identity": {
-            "handle": identity["handle"],
-            "type": identity["type"],
-            "bio": identity.get("bio"),
-        },
-        "slot": {
-            "id": slot["id"],
-            "name": slot["name"],
-            "description": slot["description"],
-            "policy": policy_display,
-        },
-    }
 
 
 # ==================== REACH ATTEMPTS (OWNER VIEW) ====================
@@ -1927,31 +1684,15 @@ async def get_public_slot(handle: str, slot_name: str):
 
 @api_router.get("/attempts")
 async def get_my_reach_attempts(user: dict = Depends(get_current_user)):
-    import sys
-
-    print(f"DEBUG: get_my_reach_attempts called", file=sys.stderr, flush=True)
-    print(f"DEBUG: user keys = {list(user.keys())}", file=sys.stderr, flush=True)
-
     try:
         identity = await db.identities.find_one({"user_id": user["id"]}, {"_id": 0})
         if not identity:
-            print(
-                f"DEBUG: No identity found for user_id={user.get('id')}",
-                file=sys.stderr,
-                flush=True,
-            )
             return []
 
         attempts = (
             await db.reach_attempts.find({"identity_id": identity["id"]}, {"_id": 0})
             .sort("created_at", -1)
             .to_list(100)
-        )
-
-        print(
-            f"DEBUG: Found {len(attempts)} attempts for identity_id={identity['id']}",
-            file=sys.stderr,
-            flush=True,
         )
 
         # Convert BSON documents to JSON-serializable dicts

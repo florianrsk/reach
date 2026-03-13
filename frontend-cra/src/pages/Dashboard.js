@@ -411,14 +411,6 @@ export default function Dashboard() {
             <Check className="w-4 h-4 text-primary" />
             <span className="text-sm text-secondary">Your reach is live</span>
           </div>
-          <Button
-            variant="outline"
-            className="rounded-none gap-2"
-            onClick={() => navigate('/slots')}
-            data-testid="manage-slots-btn"
-          >
-            Manage slots
-          </Button>
         </div>
       </div>
     </Layout>
