@@ -27,31 +27,17 @@ import jwt
 import json
 import re
 
-# Optional integrations - handle missing modules gracefully
-try:
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
+# LLM integration - using simple keyword matching fallback
+EMERGENT_LLM_AVAILABLE = False
+LlmChat = None
+UserMessage = None
 
-    EMERGENT_LLM_AVAILABLE = True
-except ImportError:
-    EMERGENT_LLM_AVAILABLE = False
-    LlmChat = None
-    UserMessage = None
-
-try:
-    from emergentintegrations.payments.stripe.checkout import (
-        StripeCheckout,
-        CheckoutSessionResponse,
-        CheckoutStatusResponse,
-        CheckoutSessionRequest,
-    )
-
-    STRIPE_CHECKOUT_AVAILABLE = True
-except ImportError:
-    STRIPE_CHECKOUT_AVAILABLE = False
-    StripeCheckout = None
-    CheckoutSessionResponse = None
-    CheckoutStatusResponse = None
-    CheckoutSessionRequest = None
+# Stripe integration - using direct stripe package
+STRIPE_CHECKOUT_AVAILABLE = False
+StripeCheckout = None
+CheckoutSessionResponse = None
+CheckoutStatusResponse = None
+CheckoutSessionRequest = None
 
 # Rate limiting imports
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -885,8 +871,8 @@ async def evaluate_rules_with_llm(
     rules: List[str], submission_data: Dict[str, Any], identity_name: str
 ) -> Dict[str, Any]:
     """
-    Evaluate submission against owner's plain language rules using LLM.
-    Falls back to simple keyword matching when LLM is not available.
+    Evaluate submission against owner's plain language rules.
+    Uses simple keyword matching since LLM integration is not available.
 
     Returns:
     {
@@ -902,148 +888,13 @@ async def evaluate_rules_with_llm(
             }
         ],
         "reasoning_summary": "Overall reasoning for final decision",
-        "llm_failed": False
+        "llm_failed": True  # Always True since we're using keyword matching
     }
     """
-    if not EMERGENT_LLM_AVAILABLE:
-        # Fall back to simple keyword matching when LLM is not available
-        return await evaluate_rules_simple_keyword_matching(
-            rules, submission_data, identity_name
-        )
-
-    if not rules:
-        return {
-            "final_decision": "queue_for_review",
-            "triggered_rules": [],
-            "reasoning_summary": "No rules configured, queuing for manual review",
-            "llm_failed": False,
-        }
-
-    try:
-        chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=f"rules-engine-{uuid.uuid4()}",
-            system_message="""You are the Reach Rules Engine. Your job is to evaluate a submission against the owner's plain language rules.
-
-OWNER'S PRIORITIES:
-1. Protect the owner's attention - err on the side of caution
-2. Most restrictive rule wins in case of conflict
-3. Be transparent about reasoning
-
-RULE ACTIONS:
-- auto_approve: Goes straight to approved queue (use sparingly, only for high-trust signals)
-- auto_reject: Sender receives rejection message immediately (for clear violations)
-- ask_for_more_context: Sender sees follow-up question before submission completes
-- queue_for_review: Default, goes to owner's decision surface
-- none: Rule doesn't apply, no action taken
-
-EVALUATION PROCESS:
-1. For each rule, determine if it applies to this submission
-2. If it applies, determine what action it triggers
-3. Provide confidence (0.0-1.0) and brief reasoning
-4. If action requires a response (reject or ask for context), suggest appropriate text
-
-CONFLICT RESOLUTION:
-If multiple rules trigger different actions, apply this priority (most restrictive wins):
-1. auto_reject (most restrictive)
-2. ask_for_more_context
-3. queue_for_review
-4. auto_approve (least restrictive)
-
-RESPONSE FORMAT:
-Return ONLY valid JSON with this exact structure:
-{
-  "final_decision": "auto_approve" | "auto_reject" | "ask_for_more_context" | "queue_for_review",
-  "triggered_rules": [
-    {
-      "rule": "original rule text",
-      "applies": true/false,
-      "action": "auto_approve" | "auto_reject" | "ask_for_more_context" | "queue_for_review" | "none",
-      "confidence": 0.0-1.0,
-      "reasoning": "plain English explanation",
-      "suggested_response": "optional response text if action requires it"
-    }
-  ],
-  "reasoning_summary": "Overall reasoning for final decision"
-}
-
-IMPORTANT: Return ONLY valid JSON, no markdown or extra text.""",
-        ).with_model("openai", "gpt-5.2")
-
-        # Prepare submission context
-        message = submission_data.get("message", "")
-        intent_category = submission_data.get("intent_category")
-        time_requirement = submission_data.get("time_requirement")
-        challenge_answer = submission_data.get("challenge_answer")
-
-        submission_context = f"""Submission to evaluate for {identity_name}:
-
-Message: {message}
-Word count: {len(message.split())}
-Intent category: {intent_category or "Not specified"}
-Time requirement: {time_requirement or "Not specified"}
-Challenge answer: {challenge_answer or "Not provided"}"""
-
-        user_message = UserMessage(
-            text=f"""Evaluate this submission against the owner's rules:
-
-OWNER'S RULES (one per line):
-{chr(10).join(f"- {rule}" for rule in rules)}
-
-SUBMISSION CONTEXT:
-{submission_context}
-
-Return your evaluation as JSON."""
-        )
-
-        response = await chat.send_message(user_message)
-
-        # Parse AI response
-        try:
-            # Extract JSON from response
-            response_text = response.text.strip()
-
-            # Try to find JSON in the response
-            json_start = response_text.find("{")
-            json_end = response_text.rfind("}") + 1
-
-            if json_start >= 0 and json_end > json_start:
-                json_str = response_text[json_start:json_end]
-                result = json.loads(json_str)
-            else:
-                # If no JSON found, try parsing the whole response
-                result = json.loads(response_text)
-
-            # Validate required fields
-            if "final_decision" not in result:
-                result["final_decision"] = "queue_for_review"
-
-            if "triggered_rules" not in result:
-                result["triggered_rules"] = []
-
-            if "reasoning_summary" not in result:
-                result["reasoning_summary"] = "LLM response missing required fields"
-
-            result["llm_failed"] = False
-            return result
-
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM response as JSON: {e}")
-            return {
-                "final_decision": "queue_for_review",
-                "triggered_rules": [],
-                "reasoning_summary": f"Failed to parse LLM response: {str(e)[:100]}",
-                "llm_failed": True,
-            }
-
-    except Exception as e:
-        logger.error(f"Rules engine LLM error: {e}")
-        return {
-            "final_decision": "queue_for_review",
-            "triggered_rules": [],
-            "reasoning_summary": f"Rules engine error: {str(e)[:100]}",
-            "llm_failed": True,
-        }
+    # Always use simple keyword matching
+    return await evaluate_rules_simple_keyword_matching(
+        rules, submission_data, identity_name
+    )
 
 
 # ==================== AUTH ROUTES ====================
@@ -1180,25 +1031,12 @@ async def health_check():
         health_status["services"]["mongodb"] = {"status": "unhealthy", "error": str(e)}
 
     # Check AI service (if configured)
-    if EMERGENT_LLM_KEY and EMERGENT_LLM_AVAILABLE:
-        try:
-            # Simple check - try to create a chat instance
-            chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id="health-check")
-            health_status["services"]["ai"] = {
-                "status": "healthy",
-                "provider": "openai",
-            }
-        except Exception as e:
-            health_status["status"] = "degraded"
-            health_status["services"]["ai"] = {
-                "status": "unhealthy",
-                "error": str(e)[:100],  # Limit error length
-            }
-    elif EMERGENT_LLM_KEY and not EMERGENT_LLM_AVAILABLE:
+    if EMERGENT_LLM_KEY:
+        # LLM key is configured but emergentintegrations is not available
         health_status["status"] = "degraded"
         health_status["services"]["ai"] = {
             "status": "unhealthy",
-            "error": "emergentintegrations module not installed",
+            "error": "LLM integration not available - using keyword matching fallback",
         }
     else:
         health_status["services"]["ai"] = {"status": "not_configured"}
@@ -1958,6 +1796,13 @@ async def create_payment_checkout(data: PaymentCheckoutRequest, request: Request
     if not attempt.get("payment_amount"):
         raise HTTPException(status_code=400, detail="No payment amount specified")
 
+    # Check if Stripe integration is available
+    if not STRIPE_CHECKOUT_AVAILABLE or StripeCheckout is None:
+        raise HTTPException(
+            status_code=501,  # 501 Not Implemented
+            detail="Payment processing is not currently available. Please contact support."
+        )
+
     # Create Stripe checkout session
     host_url = str(request.base_url).rstrip("/")
     webhook_url = f"{host_url}/api/webhook/stripe"
@@ -2009,6 +1854,13 @@ async def get_payment_status(session_id: str, request: Request):
     if not transaction:
         raise HTTPException(status_code=404, detail="Payment session not found")
 
+    # Check if Stripe integration is available
+    if not STRIPE_CHECKOUT_AVAILABLE or StripeCheckout is None:
+        raise HTTPException(
+            status_code=501,  # 501 Not Implemented
+            detail="Payment processing is not currently available. Please contact support."
+        )
+
     host_url = str(request.base_url).rstrip("/")
     webhook_url = f"{host_url}/api/webhook/stripe"
 
@@ -2049,6 +1901,12 @@ async def get_payment_status(session_id: str, request: Request):
 async def stripe_webhook(request: Request):
     body = await request.body()
     signature = request.headers.get("Stripe-Signature", "")
+
+    # Check if Stripe integration is available
+    if not STRIPE_CHECKOUT_AVAILABLE or StripeCheckout is None:
+        # Log that webhook was called but Stripe is not available
+        logger.warning(f"Stripe webhook called but Stripe integration is not available")
+        return {"received": True}  # Return success to avoid webhook retries
 
     host_url = str(request.base_url).rstrip("/")
     webhook_url = f"{host_url}/api/webhook/stripe"
