@@ -99,45 +99,56 @@ export default function Attempts() {
 
         {/* Attempts List */}
         {filteredAttempts.length === 0 ? (
-          <div className="border border-border p-8">
-            <div className="max-w-lg mx-auto">
-              <Inbox className="w-12 h-12 mx-auto mb-4 text-muted-foreground/30" />
-              <h3 className="font-serif text-lg mb-3 text-center">
-                {filter === 'all' ? 'No reach attempts yet' : `No ${filter} attempts`}
-              </h3>
-              <p className="text-sm text-muted-foreground mb-6 text-center">
-                {filter === 'all' 
-                  ? "When someone tries to reach you, you'll see them here"
-                  : "Try changing the filter to see other attempts."}
-              </p>
-              
-              {/* Sample ghost attempt card for visual preview */}
-              {filter === 'all' && (
-                <div className="border border-dashed border-border p-5 mb-6 opacity-60">
+          <div className="border border-border p-12 text-center">
+            <Inbox className="w-12 h-12 mx-auto mb-4 text-muted-foreground/30" />
+            {filter === 'pending' ? (
+              <>
+                <h3 className="font-serif text-lg mb-2">Nothing waiting. You're clear.</h3>
+                <p className="text-muted-foreground mb-6">
+                  When someone tries to reach you, they'll appear here for your decision.
+                </p>
+                <p className="text-sm text-tertiary">
+                  Share your reach link to get started
+                </p>
+              </>
+            ) : filter === 'delivered' ? (
+              <>
+                <h3 className="font-serif text-lg mb-2">No approved requests yet</h3>
+                <p className="text-muted-foreground mb-6">
+                  Approved requests will appear here once you let them through.
+                </p>
+                <div className="border border-dashed border-border p-5 mb-6 opacity-60 max-w-md mx-auto">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground">
-                          collaboration
-                        </span>
-                        <span className="text-xs px-2 py-0.5 bg-foreground text-background">
-                          deliver to human
-                        </span>
-                        <span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground">
-                          92% confidence
-                        </span>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="tag bg-background text-secondary">collaboration</span>
+                        <span className="tag bg-background text-primary">deliver to human</span>
                       </div>
                       <p className="text-sm truncate mb-1">Interested in collaborating on a new project</p>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                        <span>sender@example.com</span>
-                        <span>Just now</span>
-                      </div>
+                      <p className="text-xs text-tertiary">sender@example.com · Just now</p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   </div>
                 </div>
-              )}
-            </div>
+                <p className="text-sm text-tertiary">
+                  This is what an approved request looks like
+                </p>
+              </>
+            ) : filter === 'all' ? (
+              <>
+                <h3 className="font-serif text-lg mb-2">No submissions yet</h3>
+                <p className="text-muted-foreground mb-6">
+                  Share your reach link to start receiving requests.
+                </p>
+                <p className="text-sm text-tertiary">
+                  Your reach link: /your-handle
+                </p>
+              </>
+            ) : (
+              <>
+                <h3 className="font-serif text-lg mb-2">No {filter} submissions</h3>
+                <p className="text-muted-foreground">Try changing the filter to see other submissions.</p>
+              </>
+            )}
           </div>
         ) : (
           <div className="border border-border divide-y divide-border">

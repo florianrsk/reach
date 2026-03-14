@@ -6,6 +6,8 @@ from fastapi import (
     Header,
     Request,
     Response,
+    WebSocket,
+    WebSocketDisconnect,
 )
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
@@ -71,10 +73,16 @@ db = client[os.environ["DB_NAME"]]
 # Redis Cache
 from redis_cache import get_redis_cache, cache_public_reach_page, get_cached_public_reach_page, invalidate_cached_public_reach_page, cache_health_check
 
+# WebSocket for real-time notifications
+from websocket_manager import websocket_manager, handle_websocket_connection, authenticate_websocket
+
 # JWT Configuration
 JWT_SECRET = os.environ.get("JWT_SECRET", "reach_jwt_secret_key")
 JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 JWT_EXPIRY_HOURS = int(os.environ.get("JWT_EXPIRY_HOURS", 24))
+
+# Configure WebSocket manager with JWT secret
+websocket_manager.set_jwt_secret(JWT_SECRET)
 
 # CSRF Configuration
 CSRF_SECRET = os.environ.get("CSRF_SECRET", secrets.token_hex(32))
@@ -1262,6 +1270,56 @@ async def cache_health_check_endpoint():
     }
 
 
+# ==================== WEBSOCKET ROUTES ====================
+
+
+@api_router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket, token: str = None):
+    """
+    WebSocket endpoint for real-time notifications.
+    Requires JWT token as query parameter for authentication.
+    """
+    # Accept connection
+    await websocket.accept()
+    
+    # Check if token is provided
+    if not token:
+        await websocket.close(code=1008, reason="Authentication token required")
+        return
+    
+    # Authenticate user
+    user_info = await authenticate_websocket(websocket, token)
+    if not user_info:
+        await websocket.close(code=1008, reason="Authentication failed")
+        return
+    
+    user_id = user_info["id"]
+    
+    try:
+        # Handle WebSocket connection
+        await handle_websocket_connection(websocket, user_id)
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected for user {user_id}")
+    except Exception as e:
+        logger.error(f"WebSocket error for user {user_id}: {e}")
+        await websocket.close(code=1011, reason="Internal server error")
+
+
+@api_router.get("/ws/status")
+async def websocket_status(user: dict = Depends(get_current_user)):
+    """
+    Get WebSocket connection status for the current user.
+    """
+    connection_count = websocket_manager.get_connection_count(user["id"])
+    
+    return {
+        "connected": connection_count > 0,
+        "connection_count": connection_count,
+        "user_id": user["id"],
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+
 # ==================== IDENTITY ROUTES ====================
 
 
@@ -1639,6 +1697,24 @@ async def submit_face_reach_attempt(
     }
 
     await db.reach_attempts.insert_one(attempt)
+    
+    # Send WebSocket notification to identity owner about new attempt
+    try:
+        # Get identity owner's user_id
+        identity_owner = await db.users.find_one({"id": identity["user_id"]}, {"_id": 0})
+        if identity_owner:
+            # Send notification asynchronously (don't wait for it)
+            asyncio.create_task(
+                websocket_manager.broadcast_new_attempt(
+                    identity_id=identity["id"],
+                    user_id=identity["user_id"],
+                    attempt_data=attempt
+                )
+            )
+            logger.info(f"WebSocket notification scheduled for new attempt {attempt_id}")
+    except Exception as e:
+        logger.error(f"Failed to send WebSocket notification for attempt {attempt_id}: {e}")
+        # Don't fail the request if WebSocket notification fails
 
     # Return response based on decision
     response_data = {
@@ -1761,6 +1837,19 @@ async def update_attempt_decision(
 
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Attempt not found")
+    
+    # Send WebSocket notification about decision update
+    try:
+        asyncio.create_task(
+            websocket_manager.broadcast_attempt_decision(
+                user_id=user["id"],
+                attempt_id=attempt_id,
+                decision=decision
+            )
+        )
+        logger.info(f"WebSocket notification scheduled for decision update on attempt {attempt_id}")
+    except Exception as e:
+        logger.error(f"Failed to send WebSocket notification for decision update: {e}")
 
     return {"message": "Decision updated"}
 
@@ -1802,6 +1891,19 @@ async def block_sender(attempt_id: str, user: dict = Depends(get_current_user)):
         {"id": attempt_id, "identity_id": identity["id"]},
         {"$set": {"decision": "reject", "manual_override": True}},
     )
+    
+    # Send WebSocket notification about block decision
+    try:
+        asyncio.create_task(
+            websocket_manager.broadcast_attempt_decision(
+                user_id=user["id"],
+                attempt_id=attempt_id,
+                decision="reject"
+            )
+        )
+        logger.info(f"WebSocket notification scheduled for block decision on attempt {attempt_id}")
+    except Exception as e:
+        logger.error(f"Failed to send WebSocket notification for block decision: {e}")
 
     return {"message": "Sender blocked and attempt rejected"}
 

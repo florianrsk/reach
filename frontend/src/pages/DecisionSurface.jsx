@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import { extractErrorMessage } from '../lib/error-utils';
 import Layout from '../components/Layout';
 import { Button } from '../components/ui/button';
@@ -7,6 +8,7 @@ import { toast } from 'sonner';
 import { RefreshCw, Inbox, Clock, CheckCircle, XCircle, MessageSquare, Shield } from 'lucide-react';
 
 export default function DecisionSurface() {
+  const { identity } = useAuth();
   const [attempts, setAttempts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('pending'); // Default view is Pending
@@ -220,7 +222,7 @@ export default function DecisionSurface() {
         {/* Main submissions list */}
         <div className="space-y-4">
           {filteredAttempts.length === 0 ? (
-            <EmptyState filter={filter} />
+            <EmptyState filter={filter} identity={identity} />
           ) : (
             filteredAttempts.map((attempt) => (
               <SubmissionCard
@@ -388,22 +390,85 @@ function SubmissionCard({
   );
 }
 
-function EmptyState({ filter }) {
+function EmptyState({ filter, identity }) {
+  const reachLink = identity ? `/${identity.handle}` : '/your-handle';
+  const fullReachLink = identity ? `${window.location.origin}/r/${identity.handle}` : '';
+  
+  const copyLink = () => {
+    if (fullReachLink) {
+      navigator.clipboard.writeText(fullReachLink);
+      toast.success('Link copied');
+    }
+  };
+  
   return (
     <div className="border border-border p-12 text-center">
       <Inbox className="w-12 h-12 mx-auto mb-4 text-muted-foreground/30" />
       {filter === 'pending' ? (
         <>
-          <h3 className="font-serif text-lg mb-2">You're clear</h3>
-          <p className="text-muted-foreground">Nothing waiting for a decision.</p>
+          <h3 className="font-serif text-lg mb-2">Nothing waiting. You're clear.</h3>
+          <p className="text-muted-foreground mb-6">
+            When someone tries to reach you, they'll appear here for your decision.
+          </p>
+          <div className="flex items-center justify-center gap-2 max-w-md mx-auto">
+            <code className="text-sm bg-background border border-border px-3 py-2 flex-1 text-left truncate">
+              {reachLink}
+            </code>
+            {fullReachLink && (
+              <Button
+                variant="outline"
+                onClick={copyLink}
+                className="rounded-none border-border"
+                size="sm"
+              >
+                Copy
+              </Button>
+            )}
+          </div>
+        </>
+      ) : filter === 'approved' ? (
+        <>
+          <h3 className="font-serif text-lg mb-2">No approved requests yet</h3>
+          <p className="text-muted-foreground mb-6">
+            Approved requests will appear here once you let them through.
+          </p>
+          <div className="border border-dashed border-border p-5 mb-6 opacity-60 max-w-md mx-auto">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="tag bg-background text-secondary">collaboration</span>
+                  <span className="tag bg-background text-primary">deliver to human</span>
+                </div>
+                <p className="text-sm truncate mb-1">Interested in collaborating on a new project</p>
+                <p className="text-xs text-tertiary">sender@example.com · Just now</p>
+              </div>
+            </div>
+          </div>
+          <p className="text-sm text-tertiary">
+            This is what an approved request looks like
+          </p>
         </>
       ) : filter === 'all' ? (
         <>
           <h3 className="font-serif text-lg mb-2">No submissions yet</h3>
-          <p className="text-muted-foreground mb-4">
+          <p className="text-muted-foreground mb-6">
             Share your reach link to start receiving requests.
           </p>
-          {/* TODO: Add copy link button */}
+          <div className="flex items-center justify-center gap-2 max-w-md mx-auto">
+            <code className="text-sm bg-background border border-border px-3 py-2 flex-1 text-left truncate">
+              {reachLink}
+            </code>
+            {fullReachLink && (
+              <Button
+                variant="outline"
+                onClick={copyLink}
+                className="rounded-none border-border"
+                size="sm"
+              >
+                Copy
+              </Button>
+            )}
+          </div>
         </>
       ) : (
         <>

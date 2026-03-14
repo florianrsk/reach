@@ -2,16 +2,40 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from './ui/button';
 import { LayoutDashboard, Inbox, Settings, LogOut, ExternalLink, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export const Layout = ({ children }) => {
   const { user, identity, logout } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [newAttemptsCount, setNewAttemptsCount] = useState(0);
+
+  // Listen for new attempt notifications
+  useEffect(() => {
+    const handleNewAttempt = (event) => {
+      setNewAttemptsCount(prev => prev + 1);
+    };
+
+    window.addEventListener('new-attempt-notification', handleNewAttempt);
+
+    // Reset count when user visits attempts page
+    if (location.pathname === '/attempts') {
+      setNewAttemptsCount(0);
+    }
+
+    return () => {
+      window.removeEventListener('new-attempt-notification', handleNewAttempt);
+    };
+  }, [location.pathname]);
 
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/attempts', label: 'Attempts', icon: Inbox },
+    { 
+      path: '/attempts', 
+      label: 'Attempts', 
+      icon: Inbox,
+      badge: newAttemptsCount > 0 ? newAttemptsCount : null
+    },
     { path: '/settings', label: 'Settings', icon: Settings },
   ];
 
@@ -28,19 +52,25 @@ export const Layout = ({ children }) => {
             </Link>
             
             <nav className="hidden md:flex items-center gap-6">
-              {navItems.map(({ path, label }) => (
-                <Link
-                  key={path}
-                  to={path}
-                  className={`text-sm transition-colors ${
-                    isActive(path) 
-                      ? 'text-primary' 
-                      : 'text-secondary hover:text-primary'
-                  }`}
-                  data-testid={`nav-${label.toLowerCase()}`}
-                >
-                  {label}
-                </Link>
+              {navItems.map(({ path, label, badge }) => (
+                <div key={path} className="relative">
+                  <Link
+                    to={path}
+                    className={`text-sm transition-colors ${
+                      isActive(path) 
+                        ? 'text-primary' 
+                        : 'text-secondary hover:text-primary'
+                    }`}
+                    data-testid={`nav-${label.toLowerCase()}`}
+                  >
+                    {label}
+                  </Link>
+                  {badge && (
+                    <span className="absolute -top-2 -right-3 bg-primary text-background text-xs font-medium rounded-full w-5 h-5 flex items-center justify-center">
+                      {badge > 9 ? '9+' : badge}
+                    </span>
+                  )}
+                </div>
               ))}
             </nav>
           </div>
@@ -84,20 +114,26 @@ export const Layout = ({ children }) => {
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-border bg-background">
             <nav className="wide-container py-4 space-y-1">
-              {navItems.map(({ path, label, icon: Icon }) => (
-                <Link
-                  key={path}
-                  to={path}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-3 text-sm transition-colors ${
-                    isActive(path) 
-                      ? 'text-primary bg-surface-2' 
-                      : 'text-secondary hover:text-primary'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {label}
-                </Link>
+              {navItems.map(({ path, label, icon: Icon, badge }) => (
+                <div key={path} className="relative">
+                  <Link
+                    to={path}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-3 text-sm transition-colors ${
+                      isActive(path) 
+                        ? 'text-primary bg-surface-2' 
+                        : 'text-secondary hover:text-primary'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {label}
+                  </Link>
+                  {badge && (
+                    <span className="absolute top-2 right-3 bg-primary text-background text-xs font-medium rounded-full w-5 h-5 flex items-center justify-center">
+                      {badge > 9 ? '9+' : badge}
+                    </span>
+                  )}
+                </div>
               ))}
               
               <div className="pt-3 mt-3 border-t border-border space-y-1">
